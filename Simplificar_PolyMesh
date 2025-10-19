@@ -1,0 +1,216 @@
+import tkinter as tk
+
+from tkinter import filedialog, messagebox
+import pymeshlab
+import ezdxf
+import numpy as np
+import open3d as o3d
+import ast
+
+
+def seleccionar_archivos():
+    global archivo, archivo_rut
+    archivos = filedialog.askopenfilenames(
+        title="Seleccionar archivos",
+        filetypes=[("Archivos de texto", "*.dxf"), ("Todos los archivos", "*.*")]
+    )
+    if archivos:
+        lista.delete(0, tk.END)  # limpiar la lista
+        for archivo in archivos:
+            lista.insert(tk.END, archivo)
+
+    
+
+
+def obtener_seleccion():
+    global archivo, archivo_rut, doc
+    seleccion = lista.curselection()  # devuelve una tupla con los índices seleccionados
+    if seleccion:
+        archivo_rut = lista.get(seleccion[0])  # obtener el texto (ruta) del primer índice
+        messagebox.showinfo("Archivo seleccionado", f"Ruta:\n{archivo_rut}")
+    else:
+        messagebox.showwarning("Atención", "No has seleccionado ningún archivo.")
+
+    doc = ezdxf.readfile(archivo_rut)
+
+    
+
+        
+## FUNCIONES PROPIAS 
+
+def obtener_mesh():
+    global Mesh_es, doc
+    msp = doc.modelspace()
+    Mesh_es=[]
+    # Buscar el primer POLYFACE MESH
+    mesh_entity = None
+    i=0
+    for e in msp:
+        if e.dxftype() == "POLYLINE" and e.is_poly_face_mesh :
+            mesh_entity = e
+            Mesh_es.append(e)
+            i=i+1
+    
+    if not mesh_entity:
+        messagebox.showwarning("Atención", "No existen PolyFaceMesh.")
+    else:
+        messagebox.showwarning("Atención", "Se encontraron " + str(i) + " PolyFaceMesh")
+
+def simplificar():
+    global Mesh_es,VERT,TRIA,Mesh_es_simplified
+    
+    VERT=[]
+    TRIA=[]
+    for mesh_entity in Mesh_es:
+        # Extraer vértices y caras
+        vertex_map = []
+        face_indices = []
+
+        for v in mesh_entity.vertices:
+            if v.is_face_record:
+                # Es una cara: contiene índices de vértices
+                indices = [v.dxf.vtx0, v.dxf.vtx1, v.dxf.vtx2, v.dxf.vtx3]
+                face = [abs(i) - 1 for i in indices if i is not None and i != 0]
+        # eliminar ceros, convertir a 0-based
+                if len(face) >= 3:
+                    face_indices.append(face[:3])  # solo triángulos
+            else:
+                # Es un vértice geométrico
+                loc = v.dxf.location
+                vertex_map.append([loc.x, loc.y, loc.z])
+
+        vertices = np.array(vertex_map)
+        triangles = np.array(face_indices)
+        VERT.append(vertices)
+        TRIA.append(triangles)
+
+        
+    Mesh_es_simplified=[]
+    # Crear y mostrar la malla con Open3D
+    for vertices,triangles in zip(VERT,TRIA):
+        mesh = o3d.geometry.TriangleMesh()
+        mesh.vertices = o3d.utility.Vector3dVector(vertices)
+        mesh.triangles = o3d.utility.Vector3iVector(triangles)
+        mesh.compute_vertex_normals()
+        
+        
+        if opcion.get() == "QD":
+            target_faces = int(box_numero_faces.get())
+            mesh_simplified = mesh.simplify_quadric_decimation(target_number_of_triangles=target_faces)
+        elif opcion.get() == "VC":
+            target_faces = int(box_numero_faces.get())
+            mesh_simplified = mesh.simplify_vertex_clustering(
+            voxel_size=target_faces,  # tamaño de la celda
+            contraction=o3d.geometry.SimplificationContraction.Average
+            )
+        elif opcion.get() == "PB":
+            target_faces = box_numero_faces.get()
+            Filtro=ast.literal_eval(target_faces)
+            
+            # Exportar mesh de Open3D a archivo temporal
+            o3d.io.write_triangle_mesh("entrada.obj", mesh)
+            # Cargar en pymeshlab
+            ms = pymeshlab.MeshSet()
+            ms.load_new_mesh("entrada.obj")
+            # Aplicar simplificación con preservación de bordes
+            ms.apply_filter('meshing_decimation_quadric_edge_collapse',
+                            targetfacenum=Filtro[0],
+                            preserveboundary=True,
+                            preservenormal=True,
+                            preservetopology=True)
+            ms.apply_filter('meshing_close_holes',
+                maxholesize=Filtro[1])  # ajusta tamaño máximo de agujero a cerrar
+            # Guardar el resultado
+            ms.save_current_mesh("salida.obj")
+            # Volver a cargar en Open3D
+            mesh_simplified = o3d.io.read_triangle_mesh("salida.obj")
+            
+
+
+        # Mostrar ambas (opcional)
+        print(f"Malla original: {len(mesh.triangles)} caras")
+        print(f"Malla simplificada: {len(mesh_simplified.triangles)} caras")
+        Mesh_es_simplified.append(mesh_simplified)
+         
+def Grafico():
+    global Mesh_es_simplified        
+    # Visualizar
+    o3d.visualization.draw_geometries(Mesh_es_simplified,mesh_show_wireframe=True)
+    print(Mesh_es_simplified)
+
+def guardar_dfx():
+    global Mesh_es_simplified
+
+    docw = ezdxf.new()
+    msp = docw.modelspace()
+    for mesh_simplified in Mesh_es_simplified:
+
+        vertices = np.asarray(mesh_simplified.vertices)
+        triangles = np.asarray(mesh_simplified.triangles)
+
+        for tri in triangles:
+            if len(tri)==3:
+                p1, p2, p3 = vertices[tri[0]], vertices[tri[1]], vertices[tri[2]]
+                # 3DFACE acepta 3 o 4 puntos, si solo 3 repetimos el último punto
+                msp.add_3dface([p1, p2, p3, p3])
+            if len(tri)==4:
+                p1, p2, p3, p4 = vertices[tri[0]], vertices[tri[1]], vertices[tri[2]], vertices[tri[3]]
+                # 3DFACE acepta 3 o 4 puntos, si solo 3 repetimos el último punto
+                msp.add_3dface([p1, p2, p3, p4])
+                print("Creado Cuadrado")
+
+    docw.saveas("Archivos_Salida/Malla_Simplificada.dxf")
+    messagebox.showwarning("Atención", "Se guardo Malla Simplificada")
+
+# GLOBALES
+global archivo, archivo_rut, doc,Mesh_es
+# Ventana principal
+root = tk.Tk()
+root.title("Simplificar polyfacemesh")
+root.geometry("500x500")
+
+# GRAFICO
+
+# Botones
+
+
+# Datos ingresables
+box_numero_faces = tk.Entry(root)
+# LISTA
+
+btn_archivos = tk.Button(root, text="Seleccionar DXF", command=seleccionar_archivos)
+btn_get = tk.Button(root, text="Obtener archivo seleccionado", command=obtener_seleccion)
+lista = tk.Listbox(root,height=3)
+
+
+btn_obtener_mesh = tk.Button(root, text="Obtener PolyFaceMesh", command=obtener_mesh)
+btn_simplificar_mesh = tk.Button(root, text="Simplificar", command=simplificar)
+btn_graficar = tk.Button(root, text="Graficar Mesh",command=Grafico)
+btn_Exportar_dxf = tk.Button(root, text="Exportar DXF",command=guardar_dfx)
+
+
+#RADIO BOTTOM - SELECCIONAR TIPO DE SIMPLIFICACION
+
+opcion = tk.StringVar(value="QD")  # valor por defecto
+
+tk.Radiobutton(root, text="Quadratic Decimation", variable=opcion, value="QD",
+               command= (lambda: box_numero_faces.delete(0,"end") or box_numero_faces.insert(0,"300"))).pack(anchor="w")
+tk.Radiobutton(root, text="Vertex Clustering", variable=opcion,value="VC",
+               command= (lambda: box_numero_faces.delete(0,"end") or box_numero_faces.insert(0,"Area"))).pack(anchor="w")
+
+tk.Radiobutton(root, text="Pymeshlab", variable=opcion,value="PB",
+               command= (lambda: box_numero_faces.delete(0,"end") or box_numero_faces.insert(0,"(300,100)"))).pack(anchor="w")
+
+# UBICACIONES
+btn_archivos.pack(side="top")
+lista.pack(fill="x")
+btn_get.pack(side="top")
+btn_obtener_mesh.pack(side="top")
+box_numero_faces.pack(side="top")
+btn_simplificar_mesh.pack(side="top")
+btn_graficar.pack(side="top")
+btn_Exportar_dxf.pack(side="top")
+ 
+
+
+root.mainloop()

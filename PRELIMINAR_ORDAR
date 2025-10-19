@@ -1,0 +1,102 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+import pandas as pd
+import sys
+import uuid
+import oficina as of
+
+Rectangulos=pd.read_csv("Archivos_Ingreso/rectangulos.csv")
+Rectangulos["Area"]=Rectangulos.apply(lambda x: x["Base"]*x["Altura"],axis=1)
+Rectangulos["ID"]=np.arange(0,len(Rectangulos))
+Rectangulos["ID"]=Rectangulos.apply(lambda x: "XY"+str(int(x["ID"])),axis=1)
+
+print(Rectangulos)
+
+# ejemplo_rectpack.py
+from rectpack import newPacker
+
+# Lista de rectángulos (w, h, id)
+
+rectangles = [
+]
+
+rectangles=Rectangulos[["Base","Altura","ID"]].to_numpy()
+
+print(rectangles)
+Hy=0
+
+Pexport=[]
+n=0
+while len(rectangles) != 0:
+    # Tamaño del bin contenedor (w, h). Puedes usar uno grande o varios bins.
+    bin_width = 51.35
+    bin_height = 41.65
+
+    # Crear empaquetador: permite rotación True/False
+    packer = newPacker(rotation=False)
+
+    # Añadir bins (puedes añadir varios bins iguales)
+    packer.add_bin(bin_width, bin_height, count=1)
+
+    # Añadir rectángulos
+    for w, h, rid in rectangles:
+        packer.add_rect(w, h, rid)
+
+    # Empaquetar
+    packer.pack()
+    filtros=[]
+    # Resultados
+    for abin in packer:
+        print("-----------------")
+        #print("Bin:", abin.width, "x", abin.height)
+        for rect in abin:
+            x, y = rect.x, rect.y
+            w, h = rect.width, rect.height
+            rid = rect.rid
+            #print(f"  {rid}: pos=({x},{y}) size=({w}x{h})")
+            
+            print(rid+":  "+str(x)+" "+str(y+Hy)+" "+str(0))
+            #print("("+str(x)+" "+str(y+Hy)+" "+str(0)+")")
+            Pexport.append({"ID": rid,"X":x,"Y":y+Hy})
+
+            filtros.append(rid)
+
+
+    
+    # palabras prohibidas
+    Hy=Hy+bin_height
+
+    # Filtrar manteniendo solo las tuplas que NO contengan esas palabras
+    resultado = [t for t in rectangles if not any(pal in t for pal in filtros)]
+    rectangles=resultado.copy()
+
+Puntos=pd.DataFrame(Pexport)
+print(Puntos)
+
+Puntos["Numero"] = Puntos["ID"].str.extract(r'(\d+)').astype(int)
+Puntos = Puntos.sort_values(by="Numero").drop(columns="Numero")
+
+print(Puntos)
+
+def escribir_txt(nombre_archivo, datos, n_tabs=1):
+    """
+    Escribe datos en un archivo .txt con n tabulaciones y paréntesis.
+
+    :param nombre_archivo: Nombre del archivo txt
+    :param datos: Lista de datos a escribir
+    :param n_tabs: Número de tabulaciones antes de cada línea
+    """
+    with open(nombre_archivo, "w", encoding="utf-8") as f:
+        for dato in datos:
+            linea = "\t" * n_tabs + f"({dato})\n"
+            f.write(linea)
+
+# Ejemplo de uso:
+Puntos["Z"]=0
+val = Puntos[["X","Y","Z"]].to_numpy()
+valores=[]
+for i in val:
+    valores.append(str(i[0])+" "+str(i[1])+" "+str(i[2]))
+
+escribir_txt("salida.txt", valores, n_tabs=9)
