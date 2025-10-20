@@ -121,10 +121,14 @@ def IgualarPuntos():
     puntos=[]
     for i in punt:
         [x,y,z,_]=mySapObject.SapModel.PointObj.GetCoordCartesian(i,0,0,0)
-        puntos.append([x,y])
+        puntos.append([x,y,z])
     puntos=np.array(puntos)
     
-
+    puntos[puntos[:, 2].argsort()]
+    
+    puntos=puntos[:, :2]
+    print(puntos)
+    
     from sklearn.cluster import DBSCAN
     import matplotlib.pyplot as plt
 

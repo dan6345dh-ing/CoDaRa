@@ -163,16 +163,37 @@ def ajustarlinea(Punto,Frame,Area,caso):
     linea=PuntosLineaCoord[:, :2]
     PuntosAreaCoord=np.array(PuntosAreaCoord)
     puntos=PuntosAreaCoord[:, :2]
+    
+    
+    # NORMAL
+    CASO2="RARO"
+    if CASO2=="NORMAL":
+        LINEAT=[]
+        for i in range(len(linea)-1):
+            A = linea[i]
+            B = linea[i + 1]
+            lin= np.linspace(A, B, 1000, endpoint=False)
+            LINEAT.append(lin)
+        LINEAT = np.vstack(LINEAT + [linea[-1][None, :]])
+        linea=LINEAT
 
-    print(linea)
-    LINEAT=[]
-    for i in range(len(linea)-1):
-        A = linea[i]
-        B = linea[i + 1]
-        lin= np.linspace(A, B, 1000, endpoint=False)
-        LINEAT.append(lin)
-    LINEAT = np.vstack(LINEAT + [linea[-1][None, :]])
-    linea=LINEAT
+    # PARCIAL
+    if CASO2=="RARO":
+        LINEAT=[]
+        n=len(linea)/2
+        linea=np.array_split(linea,n)
+
+        print("----- LINEA ------")
+        print(linea)
+        for i in linea:
+            A,B = i
+            print(A,B)
+            lin= np.linspace(A, B, 10000, endpoint=True)
+            LINEAT.append(lin)
+        LINEAT = np.vstack(LINEAT)
+        linea=LINEAT
+        
+    
     
     print(puntos)
     tree = cKDTree(linea)
@@ -240,7 +261,7 @@ if i==1 or i==2 or i==3:
 
 elif i==4:
     for i in range(1):
-        input("---")
+        
         IgualarPuntos()
 #IgualarPuntos()
 ret=mySapObject.SapModel.View.RefreshView()
