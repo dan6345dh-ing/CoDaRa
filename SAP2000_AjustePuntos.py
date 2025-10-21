@@ -1,7 +1,6 @@
 import os
 import sys
 import comtypes.client
-import numpy as np
 
 # Initialize global variables
 myHelper = None
@@ -114,59 +113,126 @@ def obtenerselecion():
 
     return Punto,Frame,Area
 
+def ajustarlinea(Punto,Frame,Area,caso):
+    global mySapModel, ret
+    import numpy as np
+    from scipy.spatial import cKDTree
+    import matplotlib.pyplot as plt
+    
+    PuntosArea=[]
+    PuntosLinea=[]
+
+    if caso==1 or caso==2:
+        for i in Area:
+            [Cantidad,PuntosTupla,ret] = mySapObject.SapModel.AreaObj.GetPoints(i,0,())
+            PuntosArea.append(PuntosTupla)
+        
+    
+    if caso==2 or caso==3:
+        PuntosArea.append(tuple(Punto))
+    print(PuntosArea) 
+
+    PuntosArea = np.array([x for t in PuntosArea for x in t])
+    PuntosArea=np.unique(PuntosArea)
+    print(PuntosArea) 
+    
+    for i in Frame:
+        [P1,P2,ret] = mySapObject.SapModel.FrameObj.GetPoints(i,'','')
+
+        PuntosLinea.append((P1,P2))
+    
+    
+
+    PuntosLinea = np.array([x for t in PuntosLinea for x in t])
+
+    PuntosAreaCoord=[]
+    PuntosLineaCoord=[]
+    for i in PuntosArea:
+        [x,y,z,ret]=mySapObject.SapModel.PointObj.GetCoordCartesian(i,0,0,0)
+        PuntosAreaCoord.append([x,y,z])
+
+    for i in PuntosLinea:
+        [x,y,z,ret]=mySapObject.SapModel.PointObj.GetCoordCartesian(i,0,0,0)
+        PuntosLineaCoord.append([x,y,z])
+    
+    
+
+
+
+    PuntosLineaCoord=np.array(PuntosLineaCoord)
+    linea=PuntosLineaCoord[:, :2]
+    PuntosAreaCoord=np.array(PuntosAreaCoord)
+    puntos=PuntosAreaCoord[:, :2]
+    
+    
+    # NORMAL
+    CASO2="RARO"
+    if CASO2=="NORMAL":
+        LINEAT=[]
+        for i in range(len(linea)-1):
+            A = linea[i]
+            B = linea[i + 1]
+            lin= np.linspace(A, B, 1000, endpoint=False)
+            LINEAT.append(lin)
+        LINEAT = np.vstack(LINEAT + [linea[-1][None, :]])
+        linea=LINEAT
+
+    # PARCIAL
+    if CASO2=="RARO":
+        LINEAT=[]
+        n=len(linea)/2
+        linea=np.array_split(linea,n)
+
+        print("----- LINEA ------")
+        print(linea)
+        for i in linea:
+            A,B = i
+            print(A,B)
+            lin= np.linspace(A, B, 10000, endpoint=True)
+            LINEAT.append(lin)
+        LINEAT = np.vstack(LINEAT)
+        linea=LINEAT
+        
+    
+    
+    print(puntos)
+    tree = cKDTree(linea)
+    dist, idx = tree.query(puntos)
+    print(idx)
+    puntos_ajustados = linea[idx]
+    print(puntos_ajustados)
+
+    plt.figure(figsize=(6, 4))
+    plt.plot(linea[:, 0], linea[:, 1], 'k-', label='Línea base')
+    plt.scatter(puntos[:, 0], puntos[:, 1], c='r', label='Puntos originales')
+    plt.scatter(puntos_ajustados[:, 0], puntos_ajustados[:, 1], c='b', label='Puntos ajustados')
+    for i in range(len(puntos)):
+        plt.plot([puntos[i, 0], puntos_ajustados[i, 0]],
+                [puntos[i, 1], puntos_ajustados[i, 1]], 'gray', lw=0.5)
+    plt.legend()
+    plt.axis('equal')
+    plt.show() 
+    for i,j,k in zip(PuntosArea,puntos_ajustados,PuntosAreaCoord):
+        #Nuevos x y z
+        #print(i)
+        #print(j)
+        #print(k)
+        [xn,yn]=j
+        [xv,yv,zv]=k
+        print(xn,yn,zv)
+        # Modificacion
+        ret = mySapModel.EditPoint.ChangeCoordinates_1(i, xn, yn, zv,True)
+ 
 
     
 def IgualarPuntos():
-    punt,_,_=obtenerselecion()
-    puntos=[]
-    for i in punt:
-        [x,y,z,_]=mySapObject.SapModel.PointObj.GetCoordCartesian(i,0,0,0)
-        puntos.append([x,y,z])
-    puntos=np.array(puntos)
-    
-    puntos[puntos[:, 2].argsort()]
-    
-    puntos=puntos[:, :2]
-    print(puntos)
-    
-    from sklearn.cluster import DBSCAN
-    import matplotlib.pyplot as plt
-
-    R = 100  # radio
-    db = DBSCAN(eps=R, min_samples=1).fit(puntos)
-    labels = db.labels_
-
-    n_clusters = len(set(labels))
-    print(f"Se detectaron {n_clusters} grupos")
-
-    # Visualizar
-    colores = plt.cm.tab10(np.linspace(0, 1, n_clusters))
-    for i, c in enumerate(np.unique(labels)):
-        plt.scatter(puntos[labels == c, 0], puntos[labels == c, 1],
-                    color=colores[i % len(colores)], s=20, label=f'Grupo {i+1}')
-    print(labels)
-    print(puntos)
-    plt.legend()
-    plt.axis('equal')
-    plt.show()
-
-    
     Punto,_,_=obtenerselecion()
-    PuntosUnicos=[]
-    for i, c in enumerate(np.unique(labels)):
-        Modificador=puntos[labels == c]
-        nmp=np.array(punt)
-        Nombre=nmp[labels == c]
-        x,y=Modificador[0]
-        PuntosUnicos.append([x,y])
-        for k in Nombre:
-            [_,_,z,_]=mySapObject.SapModel.PointObj.GetCoordCartesian(k,0,0,0)
-            ret = mySapModel.EditPoint.ChangeCoordinates_1(k, x, y, z,True)
-
-    return PuntosUnicos
-
-
-    
+    [x,y,z,ret]=mySapObject.SapModel.PointObj.GetCoordCartesian(Punto[0],0,0,0)
+    input("Cambia Seleccion")
+    Punto,_,_=obtenerselecion()
+    for i in Punto:
+        [_,_,z,_]=mySapObject.SapModel.PointObj.GetCoordCartesian(i,0,0,0)
+        ret = mySapModel.EditPoint.ChangeCoordinates_1(i, x, y, z,True)
 
     
     
@@ -178,18 +244,28 @@ def IgualarPuntos():
 #Python Running example code
 initialize_helper()
 attach()
+i=0
+#while i == 0:
+#    
+    #i=int(input("Ingresa Valor Distinto de 0"))
 
+i=int(input("Caso: \n 1 [Ajustar Areas a Frames] " \
+"\n 2 [Ajustar Areas y Puntos a Frame] " \
+"\n 3 [Ajustar Puntos a Frame] " \
+"\n 4 [Alinear Puntos]"))
 
-PuntosUnicos=IgualarPuntos()
-Zmin=0
-Zmax=12000
-n=0
-for i in PuntosUnicos:
-    n=n+1
-    borrar="Borrar "+str(n)
-    x,y=i
-    ret = mySapModel.FrameObj.AddByCoord(x, y, Zmin, x, y, Zmax, borrar)
+if i==1 or i==2 or i==3:
+    Punto,Frame,Area=obtenerselecion()
+    caso=i
+    ajustarlinea(Punto,Frame,Area,caso)
 
-
+elif i==4:
+    for i in range(1):
+        
+        IgualarPuntos()
+#IgualarPuntos()
 ret=mySapObject.SapModel.View.RefreshView()
 
+
+#input("Press Enter to continue and close the model.")
+# Close the program

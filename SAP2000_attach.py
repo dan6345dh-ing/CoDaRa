@@ -10,9 +10,18 @@ myHelper,mySapModel,mySapObject,ret,program_id,program_path=SP20.VariablesInicia
 myHelper=SP20.initialize_helper(myHelper,mySapModel,mySapObject,ret,program_id,program_path)
 mySapModel, mySapObject=SP20.attach(myHelper,mySapModel,mySapObject,ret,program_id,program_path)
 #-----------------------------------#
-Caso=2
+Caso=1
+
 #Punto,Frame,Area=SP20.obtenerseleccion(mySapModel, mySapObject, ret)
-if Caso==1: #DIBUJO LINEAS EN LA ZONA SUPERIOR DE LAS AREAS
+if Caso==0:
+    Puntos=["23750","23106","23751"]
+    for i in Puntos:
+        ret = mySapModel.PointObj.SetSelected(i, True)
+
+    Areas=["8176","24687"]
+    for i in Areas:
+        ret = mySapModel.AreaObj.SetSelected(i, True, 0)
+elif Caso==1: #DIBUJO LINEAS EN LA ZONA SUPERIOR DE LAS AREAS
     PC=SP20.obtenerCoor(mySapModel, mySapObject, ret, PuntoTF=False, FrameTF=False, AreaTF=True)
 
     AreasCoord=np.array_split(PC,len(PC)/4)
