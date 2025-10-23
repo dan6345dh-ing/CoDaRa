@@ -310,7 +310,7 @@ def AREAs():
     ret = mySapModel.SetPresentUnits(14)
     e=[10,12,16,18,20,22,24,26,28,30,36,38,42,44,50,54,56,58,60,62,70,72,78,84,92,94,96,98]
     for i in e:
-        ret= mySapObject.SapModel.PropArea.SetShell_1("M e="+str(i), 2, True, "MAMPOSTERIA",0, i ,i)
+        ret= mySapObject.SapModel.PropArea.SetShell_1("M e="+str(i), 2, True, "Mam Concreto 7 MPA",0, i ,i)
 
 
 

@@ -71,10 +71,84 @@ elif Caso==3: #Redondear Z
 
     ret=mySapObject.SapModel.View.RefreshView()
 
-    
+elif Caso == 4: # Cambiar Seccion de un material por otro material
+    _,_,Area=SP20.obtenerseleccion(mySapModel, mySapObject, ret)
+    AreaProp=[]
+    Inicial="M"
+    Reemplazo="La"
+    for i in Area:
+        Prop, ret = mySapModel.AreaObj.GetProperty(i, "")
+        Prop=Prop.replace(Inicial, Reemplazo)
+        AreaProp.append(Prop)
 
+    for i,j in zip(AreaProp, Area):
+        ret = mySapModel.AreaObj.SetProperty(j, i)
+
+    print(AreaProp)
 
      
+elif Caso==5: #ExportarLineasDeAutocadASap
+    import win32com.client
+    import time
+    import os
+    path_actual = os.path.dirname(os.path.abspath(__file__))
+    print(path_actual)
+
+    # Conecta a AutoCAD
+    acad = win32com.client.Dispatch("AutoCAD.Application")
+    doc = acad.ActiveDocument
+
+    # Carga y ejecuta un archivo LISP
+
+    lisp_path = path_actual+"\Lisp\ConexionPython.lsp"
+    print("PATH")
+    print(lisp_path)
+
+    doc.SendCommand(f'(load "{lisp_path}") ')
+
+    time.sleep(2)
+    doc.SendCommand('(c:ObteneryExportarLineas)\n')
+
+
+    f = open('Lisp/txtpoint.txt')
+    contenido=f.read()
+
+    contenido=contenido.split('\n')
+    PuntoRef=[]
+    PuntosLinea=[]
+    n=0
+    for i in contenido:
+        n=n+1      
+        if n==len(contenido):
+            break
+        if n==1:  
+            PuntosRef=eval(i)
+        else:
+            Puntos=i.split(";")
+            print(Puntos)
+            
+            Pi=eval(Puntos[0])
+            Pf=eval(Puntos[1])
+            PuntosLinea.append([Pi,Pf])
+    PuntoRef=np.array(PuntosRef)
+    PuntosLinea=np.array(PuntosLinea)
         
+    Punto=SP20.obtenerCoor(mySapModel, mySapObject, ret, PuntoTF=True, FrameTF=False, AreaTF=False, EliminarRepetidos=False)
+    print("----- PUNTO DE REFERENCIA AUTOCAD -----")
+    print(PuntoRef, "\n")
+    print("----- PUNTO DE LINEA AUTOCAD -----")
+    print(PuntosLinea, "\n")
+    print("----- PUNTO DE REFERENCIA SAP2000 -----")
+    print(Punto[0].astype(tuple))
+
+    Deltas=-PuntoRef+Punto[0]
+    print(Deltas)
+    n=0
+    for i in PuntosLinea:
+        n=n+1
+        print(i)
+        PointCoordINI=i[0]+Deltas
+        PointCoordFIN=i[1]+Deltas
+        SP20.DibujarLinea(PointCoordINI,PointCoordFIN,"DeSap"+str(n),mySapModel)
 
 ret=mySapObject.SapModel.View.RefreshView()
