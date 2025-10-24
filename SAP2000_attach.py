@@ -10,7 +10,7 @@ myHelper,mySapModel,mySapObject,ret,program_id,program_path=SP20.VariablesInicia
 myHelper=SP20.initialize_helper(myHelper,mySapModel,mySapObject,ret,program_id,program_path)
 mySapModel, mySapObject=SP20.attach(myHelper,mySapModel,mySapObject,ret,program_id,program_path)
 #-----------------------------------#
-Caso=1
+Caso=6
 
 #Punto,Frame,Area=SP20.obtenerseleccion(mySapModel, mySapObject, ret)
 if Caso==0:
@@ -85,29 +85,30 @@ elif Caso == 4: # Cambiar Seccion de un material por otro material
         ret = mySapModel.AreaObj.SetProperty(j, i)
 
     print(AreaProp)
-
-     
+ 
 elif Caso==5: #ExportarLineasDeAutocadASap
-    import win32com.client
-    import time
-    import os
-    path_actual = os.path.dirname(os.path.abspath(__file__))
-    print(path_actual)
+    Reescribir=input("Reescribir los frames SI 1 /NO 0:\n")
+    if Reescribir==1:
+        import win32com.client
+        import time
+        import os
+        path_actual = os.path.dirname(os.path.abspath(__file__))
+        print(path_actual)
 
-    # Conecta a AutoCAD
-    acad = win32com.client.Dispatch("AutoCAD.Application")
-    doc = acad.ActiveDocument
+        # Conecta a AutoCAD
+        acad = win32com.client.Dispatch("AutoCAD.Application")
+        doc = acad.ActiveDocument
 
-    # Carga y ejecuta un archivo LISP
+        # Carga y ejecuta un archivo LISP
 
-    lisp_path = path_actual+"\Lisp\ConexionPython.lsp"
-    print("PATH")
-    print(lisp_path)
+        lisp_path = path_actual+"\Lisp\ConexionPython.lsp"
+        print("PATH")
+        print(lisp_path)
 
-    doc.SendCommand(f'(load "{lisp_path}") ')
+        doc.SendCommand(f'(load "{lisp_path}") ')
 
-    time.sleep(2)
-    doc.SendCommand('(c:ObteneryExportarLineas)\n')
+        time.sleep(2)
+        doc.SendCommand('(c:ObteneryExportarLineas)\n')
 
 
     f = open('Lisp/txtpoint.txt')
@@ -150,5 +151,86 @@ elif Caso==5: #ExportarLineasDeAutocadASap
         PointCoordINI=i[0]+Deltas
         PointCoordFIN=i[1]+Deltas
         SP20.DibujarLinea(PointCoordINI,PointCoordFIN,"DeSap"+str(n),mySapModel)
+
+elif Caso==6: #Obtener Derivas del Sap
+
+    
+    Numero_de_Piso=input("Ingrese Número de Pisos:")
+    HPisos=[]
+    DesplazamientoEX=[]
+    DesplazamientoEY=[]
+    NodoMAXIMOEx=[]
+    NodoMAXIMOEy=[]
+    ret = mySapModel.Results.Setup.DeselectAllCasesAndCombosForOutput()
+    ret = mySapModel.Results.Setup.SetCaseSelectedForOutput("Ex")
+    ret = mySapModel.Results.Setup.SetCaseSelectedForOutput("Ey")
+    
+    CasoSeleccion=input("1) Seleccion Manual de Nodos \n2) Seleccion por piso \n Caso: ")
+    
+    for i in range(int(Numero_de_Piso)):
+        
+        if CasoSeleccion=="2":
+            ret = mySapModel.SelectObj.ClearSelection()
+            h=float(input("\nIngrese Altura de Piso "+str(i+1)+"[m]:  "))
+            HPisos.append(h)
+            ret = mySapModel.SelectObj.CoordinateRange(float('-inf'), float('inf'), float('-inf'), float('inf'), h, h,False,"GLOBAL",False, True ,False , False, False , False)
+
+
+            NumberResults = 0;    Obj = [];    Elm = [];    ACase = [];    StepType = [];    StepNum = []
+            U1 = [];    U2 = [];    U3 = [];    R1 = [];    R2 = [];    R3 = []
+            ObjectElm = 3
+            #0-> ObjetoElm 1-> Group ELem 2->  3-> Seleccion
+        elif CasoSeleccion =="1":
+            ret = mySapModel.SelectObj.ClearSelection()
+            input("Seleccione Nodo " + str(i+1) + " : (Enter)")
+            PP=SP20.obtenerCoor(mySapModel, mySapObject, ret, PuntoTF=True, FrameTF=False, AreaTF=False, EliminarRepetidos=False)
+            print(PP)
+            x,y,h=PP[0]
+            HPisos.append(h)
+
+            NumberResults = 0;    Obj = [];    Elm = [];    ACase = [];    StepType = [];    StepNum = []
+            U1 = [];    U2 = [];    U3 = [];    R1 = [];    R2 = [];    R3 = []
+            ObjectElm = 3
+
+
+
+        
+        [NumberResults, Obj, Elm, ACase, StepType, StepNum, U1, U2, U3, R1, R2, R3, ret] = mySapModel.Results.JointDispl("ALL", ObjectElm, NumberResults, Obj, Elm, ACase, StepType, StepNum,U1, U2, U3, R1, R2, R3)
+        # U1 -> X ||| U2 -> Y
+        Datos=[]
+        Datos=pd.DataFrame(zip(Obj,ACase,U1,U2),columns=["Label J","Caso","Ux","Uy"])
+        #print(Datos)
+        Ex=Datos[Datos["Caso"]=="EQx"]
+        Ey=Datos[Datos["Caso"]=="EQy"]
+        Ex.reset_index(inplace=True,drop=True)
+        Ey.reset_index(inplace=True,drop=True)
+        ValoresMaximosEx=Ex.loc[int(Ex["Ux"].argmax()),["Ux","Uy"]].values
+        ValoresMaximosEy=Ey.loc[int(Ey["Uy"].argmax()),["Ux","Uy"]].values
+        NodoMAXIMOEx.append(Ex.loc[int(Ex["Ux"].argmax()),"Label J"])
+        NodoMAXIMOEy.append(Ey.loc[int(Ey["Uy"].argmax()),"Label J"])
+
+        DesplazamientoEX.append(ValoresMaximosEx)
+        DesplazamientoEY.append(ValoresMaximosEy)
+
+        #print(DesplazamientoEX)
+    print(NodoMAXIMOEx)
+    print(NodoMAXIMOEy)
+    ret = mySapModel.SelectObj.ClearSelection()
+    for i in NodoMAXIMOEx:
+        ret = mySapModel.PointObj.SetSelected(i, True)
+    ret=mySapObject.SapModel.View.RefreshView()
+    input("Nodos de Mayor desplazamiento en X (Continuar)")
+    ret = mySapModel.SelectObj.ClearSelection()
+    for i in NodoMAXIMOEy:
+        ret = mySapModel.PointObj.SetSelected(i, True)
+    ret=mySapObject.SapModel.View.RefreshView()
+    input("Nodos de Mayor desplazamiento en Y (Continuar)")
+ 
+
+    import oficina as of
+    R=1.5
+    of.DibujarDerivas(HPisos,DesplazamientoEX,R,Deriva="X")
+    of.DibujarDerivas(HPisos,DesplazamientoEY,R,Deriva="Y")
+    
 
 ret=mySapObject.SapModel.View.RefreshView()

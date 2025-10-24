@@ -1,6 +1,7 @@
-(defun c:ObteneryExportarLineas (/ line nlines i lineactual) 
-  (setq PuntoRef (getpoint "\nPuntosdeReferencia"))
+(defun c:ObteneryExportarLineas (/ line lines nlines i lineactual PuntoRef txtpuntos Spoint Epoint) 
   (setq lines (ssget '((0 . "LINE"))))
+  (setq PuntoRef (getpoint "\nPuntosdeReferencia"))
+
   (setq nlines (sslength lines))
   (setq txtpuntos (open "C:/USERS/PC-002/DOCUMENTS/CODARA/LISP/txtpoint.txt" "w"))    
   (princ txtpuntos)

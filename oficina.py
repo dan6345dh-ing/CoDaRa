@@ -435,3 +435,101 @@ def Leer_Area(Excel1):
     Puntos_SAP=pd.DataFrame(Puntos_Lista)
 
     return Puntos_SAP
+
+def DibujarDerivas(AlturasdePiso, desplazamientos, R, Deriva="X"):
+    
+    # Alturas de niveles (en metros)
+    alturas = AlturasdePiso.copy()
+    #u1,u2
+
+    pisoanterior=[0,0]
+    drifts=[0]
+    drifts2=[0]
+    hn=0
+    for h,u in zip(alturas,desplazamientos):
+        hi=h-hn
+        hn=h
+        unx=pisoanterior[0]
+        uny=pisoanterior[1]
+        drifts.append((u[0]-unx)/hi)
+        drifts2.append((u[1]-uny)/hi)
+        pisoanterior=[u[0],u[1]]
+        print(hi)
+    
+    drifts=np.array(drifts)
+    drifts2=np.array(drifts2)
+    
+    alturas =np.insert(alturas,0,0)
+        
+    niveles_etiquetas = [f"N+{h:.2f}" for h in alturas]
+
+    # Buscar el máximo
+    if Deriva =="X":
+        max_drift = np.max(drifts)
+        idx_max = np.argmax(drifts)
+        altura_max = alturas[idx_max]
+        nivel_max = niveles_etiquetas[idx_max]
+        min_drift = np.min(drifts)
+        idx_min = np.argmin(drifts)
+        nivel_min = niveles_etiquetas[idx_min]
+    else:
+        max_drift = np.max(drifts2)
+        idx_max = np.argmax(drifts2)
+        altura_max = alturas[idx_max]
+        nivel_max = niveles_etiquetas[idx_max]
+        min_drift = np.min(drifts2)
+        idx_min = np.argmin(drifts2)
+        nivel_min = niveles_etiquetas[idx_min]
+
+    # Crear gráfico
+    fig, ax = plt.subplots(figsize=(6, 8))
+    fig.patch.set_facecolor('#d3d3d3')    # Fondo gris claro (fuera del gráfico)
+    ax.set_facecolor('white')             # Fondo blanco (área del gráfico)
+    # Graficar línea roja + puntos azules
+    SentidoYY, =ax.plot(drifts2, alturas, color='blue', linewidth=1.5, label="Sentido Y")
+    ax.plot(drifts2, alturas, 'bs', markersize=5)
+
+    SentidoXX, =ax.plot(drifts, alturas, color='red', linewidth=1.5, label="Sentido X")
+    ax.plot(drifts, alturas, 'rs', markersize=5)
+
+    # Etiquetas y estilo
+    ax.set_title('Maximum Story Drifts', fontsize=14, fontweight='bold', fontstyle='italic')
+    ax.set_xlabel('Drift, Unitless',fontweight='bold')
+    ax.set_yticks(alturas)  # Para que las líneas estén alineadas
+
+    ax.set_yticklabels(niveles_etiquetas)
+
+    ax.grid(True, which='both', linestyle='-', linewidth=0.5)
+
+    # Invertir eje Y para que N+1 esté abajo
+    ax.invert_xaxis()
+
+    # Resaltar máximo con un cuadro de texto
+    texto = f"Max: {max_drift:.6f}, {nivel_max}"
+    ax.annotate(
+       texto,
+       xy=(max_drift, altura_max),
+       xytext=(max_drift * 1.1, altura_max),
+       bbox=dict(boxstyle="round,pad=0.3", edgecolor='red', facecolor='white'),
+       fontsize=9,
+       color='black',
+       arrowprops=dict(arrowstyle='->', color='red', lw=1)
+    )
+
+    #Opcional: estilo visual tipo ETABS
+
+    ax.set_xlim(left=-max_drift * 1.5, right=max_drift * 1.5)
+    texto_info = f"Max: {max_drift:.6f}, {nivel_max}   Min: {min_drift:.6f}, {nivel_min}                                                                       "
+    fig.text(
+        0.01, -0.02,
+        texto_info,
+        fontsize=9,
+        color='black',
+        bbox=dict(facecolor='#e6e6e6', edgecolor='gray', boxstyle='round,pad=1.4')
+    )
+    print("Deriva: ",round(max_drift*R*0.75*100,2),"%")
+    ax.legend([SentidoXX, SentidoYY],['Sentido X','Sentido Y'])
+    plt.tight_layout()
+    plt.show()
+    
+    
