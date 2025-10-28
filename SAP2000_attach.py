@@ -200,8 +200,8 @@ elif Caso==6: #Obtener Derivas del Sap
         Datos=[]
         Datos=pd.DataFrame(zip(Obj,ACase,U1,U2),columns=["Label J","Caso","Ux","Uy"])
         #print(Datos)
-        Ex=Datos[Datos["Caso"]=="EQx"]
-        Ey=Datos[Datos["Caso"]=="EQy"]
+        Ex=Datos[Datos["Caso"]=="Ex"]
+        Ey=Datos[Datos["Caso"]=="Ey"]
         Ex.reset_index(inplace=True,drop=True)
         Ey.reset_index(inplace=True,drop=True)
         ValoresMaximosEx=Ex.loc[int(Ex["Ux"].argmax()),["Ux","Uy"]].values
