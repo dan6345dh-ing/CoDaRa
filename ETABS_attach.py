@@ -5,7 +5,7 @@ myHelper,myEtabsModel,myEtabsObject,ret,program_id,program_path=ETB.VariablesIni
 myHelper=ETB.initialize_helper(myHelper,myEtabsModel,myEtabsObject,ret,program_id,program_path)
 myEtabsModel=ETB.attach(myHelper,myEtabsModel,myEtabsObject,ret,program_id,program_path)
 
-Caso=3
+Caso=1
 
 # FUERZA
 #lb(1),kip(2),N(3),kN(4),kgf(5),tonf(6)
@@ -165,6 +165,8 @@ if Caso==2:
 
 if Caso==3: #Agregar Elementos de Dimensiones Comunes (HA)
     import itertools
+    ret = myEtabsModel.PropMaterial.AddMaterial("FY 4200", 6, "United States", "ASTM A706", "Grade 60","FY 4200")
+
     fc=float(input("f'c MPA: ")) #MPA 
     MaterialName="HA "+ str(fc) + " MPA"
     #0.8 col 0.5 vig
@@ -189,4 +191,18 @@ if Caso==3: #Agregar Elementos de Dimensiones Comunes (HA)
         ret = myEtabsModel.PropFrame.SetRectangle(NombreVig, MaterialName, Altura, Base)
 
         ret = myEtabsModel.PropFrame.SetModifiers(NombreVig,ReduccionVig)
+        aux=[]
+        
+        print(Base, "  -   ",Altura)
+
+        recubrimiento = 4.5 #cm
+        bw=Base*1000 #mm
+        d=(Altura*1000-recubrimiento*10)
+        AsMin=np.max([1.4/420*bw*d,
+                     ((fc)**0.5)/(4*420)*bw*d])
+        
+        recubrimiento=recubrimiento/100
+        AsMin=AsMin/(1000**2)
+        ret = myEtabsModel.PropFrame.SetRebarBeam(NombreVig, "FY 4200", "FY 4200", recubrimiento, recubrimiento, AsMin, AsMin, AsMin, AsMin)
+
 
