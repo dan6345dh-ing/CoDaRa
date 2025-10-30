@@ -48,3 +48,71 @@ def attach(myHelper,myEtabsModel,myEtabsObject,ret,program_id,program_path):
 #-----------------------------------------------------#
 #-----------------------------------------------------#
 
+def obtenerseleccion(myEtabsModel, myEtabsObject, ret):
+    
+    Tipo=["Nada","Punto","Frame","Cable","Tendon","Area","Solido","Link"]
+    ret = myEtabsModel.SelectObj.GetSelected()
+    Cantidad,Elementos,Nombre,Zero = ret
+    print("Seleccionaste "+str(Cantidad) + " entidades")
+    Punto=[]
+    Frame=[]
+    Area=[]
+    for i,j in zip(Elementos,Nombre):
+        #print(Tipo[i]+" "+j)
+        #Separador
+        if Tipo[i]=="Punto":
+            Punto.append(j)
+        elif Tipo[i]=="Frame":
+            Frame.append(j)
+        elif Tipo[i]=="Area":
+            Area.append(j)
+
+    print(str(len(Punto))+" Puntos")
+    print(str(len(Frame))+" Frames")
+    print(str(len(Area))+" Areas")
+    return Punto,Frame,Area
+
+def obtenerCoor(myEtabsModel, myEtabsObject, ret, PuntoTF=False, FrameTF=False, AreaTF=False, EliminarRepetidos=False,AgregarID="False"):
+    Punto,Frame,Area=obtenerseleccion(myEtabsModel, myEtabsObject, ret)
+
+    # Casos Puntos, Frames, Area
+    Puntos=[]
+    PuntosFrame=[]
+    PuntosArea=[]
+
+    if PuntoTF!=False:
+        Puntos=Punto
+    if FrameTF!=False:
+        
+        for i in Frame:
+            [P1,P2,ret] = myEtabsObject.SapModel.FrameObj.GetPoints(i,'','')
+            PuntosFrame.append((P1,P2))
+
+        PuntosFrame=[x for t in PuntosFrame for x in t]
+    if AreaTF!=False:
+        
+        for i in Area:
+            [Cantidad,PuntosTupla,ret] = myEtabsObject.SapModel.AreaObj.GetPoints(i,0,())
+            PuntosArea.append(PuntosTupla)
+        
+        PuntosArea=[x for t in PuntosArea for x in t]
+
+    PointName=Puntos+PuntosFrame+PuntosArea
+
+    if EliminarRepetidos==True:
+        PointName=np.unique(PointName)
+
+    print(PointName)
+
+    PointCoord=[]
+    for i in PointName:
+        [x,y,z,ret]=myEtabsModel.PointObj.GetCoordCartesian(i,0,0,0)
+        
+        if AgregarID==True:
+            PointCoord.append([x,y,z,int(i)])
+        else:
+            PointCoord.append([x,y,z])
+    
+    PointCoord=np.array(PointCoord)
+
+    return PointCoord

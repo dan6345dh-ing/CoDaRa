@@ -5,7 +5,7 @@ myHelper,myEtabsModel,myEtabsObject,ret,program_id,program_path=ETB.VariablesIni
 myHelper=ETB.initialize_helper(myHelper,myEtabsModel,myEtabsObject,ret,program_id,program_path)
 myEtabsModel=ETB.attach(myHelper,myEtabsModel,myEtabsObject,ret,program_id,program_path)
 
-Caso=1
+Caso=4
 
 # FUERZA
 #lb(1),kip(2),N(3),kN(4),kgf(5),tonf(6)
@@ -205,4 +205,70 @@ if Caso==3: #Agregar Elementos de Dimensiones Comunes (HA)
         AsMin=AsMin/(1000**2)
         ret = myEtabsModel.PropFrame.SetRebarBeam(NombreVig, "FY 4200", "FY 4200", recubrimiento, recubrimiento, AsMin, AsMin, AsMin, AsMin)
 
+if Caso==4: #Crear Areas
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    from scipy.spatial import cKDTree
+    import itertools
+        
+    
+    
+    i=''
+    X=0
+    Y=0
+    Coord=[]
+    i=input("\nSeleccion (1 Terminar)")
+    while i=='':
+        X=0
+        Puntos,_,_=ETB.obtenerseleccion(myEtabsModel, myEtabsObject, ret)
+        for j in Puntos:
+            Coord.append([X,Y,0,int(j)])
+            X=X+1
 
+        Y=Y+1
+        i=input("\nSeleccion (1 Terminar)")
+
+ 
+    df=pd.DataFrame(Coord,columns=["XorR","Y","Z","Joint"])
+    df.sort_values(by=["Y","XorR"],inplace=True)
+    df.reset_index(drop=True, inplace=True)  
+    print(df)
+
+    ids = df['Joint'].astype(str)  # ID de cada punto
+    X = df['XorR'].values
+    Y = df['Y'].values
+
+    Nx=len(np.unique(df['XorR'].values))
+    Ny=len(np.unique(df['Y'].values))
+
+    elementos=[]
+    for j in range(Ny-1):  # filas
+        for i in range(Nx-1):  # columnas
+            n1 = j * Nx + i + 1
+            n2 = j * Nx + i + 2
+            n3 = (j + 1) * Nx + i + 2
+            n4 = (j + 1) * Nx + i + 1
+
+            print(n1,n2,n3,n4)
+            elementos.append([ids[n1-1], ids[n2-1], ids[n3-1], ids[n4-1]])
+            print([ids[n1-1], ids[n2-1], ids[n3-1], ids[n4-1]])
+    
+            
+    plt.show()
+    for idx, elem in enumerate(elementos, start=1):
+        #print(f"Elemento {idx}: {elem}")
+        print("-------------")
+        Nombre="Techo_"+str(idx+1)
+        ID=[]
+        for i in elem:
+            ID.append(str(int(float(i))))
+        print("-------------")
+        print(ID)
+        ret = myEtabsModel.AreaObj.AddByPoint(int(len(elem)),ID ,Nombre)
+       
+    ret = myEtabsModel.View.RefreshView(0, False)
+    
+
+    Mallas=pd.DataFrame(elementos,columns=["P1","P2","P3","P4"])
+    print(Mallas)
+    
