@@ -72,7 +72,7 @@ def obtenerseleccion(myEtabsModel, myEtabsObject, ret):
     print(str(len(Area))+" Areas")
     return Punto,Frame,Area
 
-def obtenerCoor(myEtabsModel, myEtabsObject, ret, PuntoTF=False, FrameTF=False, AreaTF=False, EliminarRepetidos=False,AgregarID="False"):
+def obtenerCoor(myEtabsModel, myEtabsObject, ret, PuntoTF=False, FrameTF=False, AreaTF=False, EliminarRepetidos=False,AgregarID=False):
     Punto,Frame,Area=obtenerseleccion(myEtabsModel, myEtabsObject, ret)
 
     # Casos Puntos, Frames, Area

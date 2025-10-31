@@ -49,7 +49,7 @@ if Caso==1:
                                                   , 0.004, 0.005)
 
 
-if Caso==2:
+if Caso==2: #Combinaciones de carga
     
     input("Agrege Manualmente el Response Espectrum de NEC 15: \nSISMO NEC 15")
 
@@ -207,9 +207,9 @@ if Caso==3: #Agregar Elementos de Dimensiones Comunes (HA)
 
 if Caso==4: #Crear Areas
     import pandas as pd
-    import matplotlib.pyplot as plt
-    from scipy.spatial import cKDTree
-    import itertools
+    #import matplotlib.pyplot as plt
+    #from scipy.spatial import cKDTree
+    #import itertools
         
     
     
@@ -220,13 +220,17 @@ if Caso==4: #Crear Areas
     i=input("\nSeleccion (1 Terminar)")
     while i=='':
         X=0
-        Puntos,_,_=ETB.obtenerseleccion(myEtabsModel, myEtabsObject, ret)
-        for j in Puntos:
+        CoordReal=ETB.obtenerCoor(myEtabsModel, myEtabsObject, ret, PuntoTF=True, FrameTF=False, AreaTF=False, EliminarRepetidos=False,AgregarID=True)
+        ret = myEtabsModel.SelectObj.ClearSelection()
+        print(Coord)
+        CoordReal=CoordReal[CoordReal[:,0].argsort()]
+        for j in CoordReal[:,3]:
             Coord.append([X,Y,0,int(j)])
             X=X+1
 
         Y=Y+1
         i=input("\nSeleccion (1 Terminar)")
+
 
  
     df=pd.DataFrame(Coord,columns=["XorR","Y","Z","Joint"])
@@ -254,7 +258,7 @@ if Caso==4: #Crear Areas
             print([ids[n1-1], ids[n2-1], ids[n3-1], ids[n4-1]])
     
             
-    plt.show()
+
     for idx, elem in enumerate(elementos, start=1):
         #print(f"Elemento {idx}: {elem}")
         print("-------------")
